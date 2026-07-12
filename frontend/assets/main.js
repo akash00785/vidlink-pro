@@ -4,7 +4,7 @@
 
 // ── Config ──────────────────────────────────────
 // তোমার Render backend URL এখানে দাও (deploy করার পর)
-const API_BASE = "https://vidlink-api.onrender.com";
+const API_BASE = "https://vidlink-pro.onrender.com";
 
 // তোমার Cloudflare Worker URL এখানে দাও (deploy করার পর)
 const CF_WORKER = "https://vidlink-worker.YOUR-SUBDOMAIN.workers.dev";
