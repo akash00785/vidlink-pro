@@ -28,11 +28,32 @@ def detect_platform(url: str) -> str:
     return "unknown"
 
 
-def get_video_info(url: str) -> dict:
+def get_video_info(url: str, rapidapi_key: str | None = None) -> dict:
     """
-    yt-dlp দিয়ে video info + CDN URLs বের করে।
+    Video info + CDN URLs বের করে।
     ফাইল download হয় না — শুধু JSON info।
+
+    TikTok-এর জন্য: yt-dlp প্রায়ই watermark-সহ বা signed/short-lived CDN URL
+    দেয় যা পরে Cloudflare Worker fetch করতে গেলে TikTok 403 দিয়ে ব্লক করে।
+    তাই RAPIDAPI_KEY থাকলে প্রথমে RapidAPI TikTok downloader (watermark-free,
+    বেশি reliable, আসল আলাদা audio track সহ) try করা হয়। সেটা fail করলে
+    yt-dlp দিয়ে fallback করে।
     """
+    platform = detect_platform(url)
+
+    if platform == "tiktok" and rapidapi_key:
+        try:
+            from .api_handler import get_hd_info
+            info = get_hd_info(url, rapidapi_key)
+            if info.get("formats"):
+                return info
+        except Exception:
+            pass  # RapidAPI fail করলে নিচে yt-dlp দিয়ে try করবে
+
+    return _extract_with_ytdlp(url, platform)
+
+
+def _extract_with_ytdlp(url: str, platform: str) -> dict:
     ydl_opts = {
         "quiet": True,
         "no_warnings": True,
@@ -60,7 +81,6 @@ def get_video_info(url: str) -> dict:
     if not info:
         raise ValueError("ভিডিও তথ্য পাওয়া যায়নি।")
 
-    platform = detect_platform(url)
     title = info.get("title", "Video")
     thumbnail = info.get("thumbnail") or _pick_thumbnail(info)
     duration = info.get("duration")
@@ -71,13 +91,16 @@ def get_video_info(url: str) -> dict:
     audio_url = _get_audio_url(info)
 
     return {
-        "title":     title,
-        "thumbnail": thumbnail,
-        "duration":  int(duration) if duration else None,
-        "uploader":  uploader,
-        "platform":  platform,
-        "formats":   formats,
-        "audio_url": audio_url,
+        "title":          title,
+        "thumbnail":      thumbnail,
+        "duration":       int(duration) if duration else None,
+        "uploader":       uploader,
+        "platform":       platform,
+        "formats":        formats,
+        "audio_url":      audio_url,
+        # সত্যিকারের আলাদা audio-only stream পাওয়া গেলে তবেই True —
+        # নাহলে audio বাটনে চাপলে আসলে পুরো ভিডিও নেমে যেত (আগের বাগ)।
+        "audio_available": audio_url is not None,
     }
 
 
@@ -89,9 +112,18 @@ def _pick_thumbnail(info: dict) -> str | None:
 
 
 def _build_formats(info: dict, platform: str) -> list:
-    """Available video formats বের করো, highest quality আগে।"""
+    """Available video formats বের করো, highest quality আগে।
+
+    দুইটা জিনিস দিয়ে duplicate বাদ দেওয়া হয়: height AND url।
+    শুধু height দিয়ে dedup করলে TikTok/Facebook-এর মতো platform-এ
+    কখনো কখনো ভিন্ন height লেবেল হওয়া সত্ত্বেও আসলে একই underlying
+    CDN url থেকে যায় — ফলে "HD" আর normal বাটনে চাপলে একই ভিডিও নামে।
+    এখন একই url দ্বিতীয়বার দেখা গেলে সেটা বাদ দেওয়া হয়, তাই স্ক্রিনে
+    যে কয়টা বাটন দেখা যাবে, প্রতিটা সত্যিই আলাদা resolution/ফাইল হবে।
+    """
     raw_formats = info.get("formats") or []
     seen_heights = set()
+    seen_urls = set()
     result = []
 
     # Height অনুযায়ী sort (descending)
@@ -104,13 +136,13 @@ def _build_formats(info: dict, platform: str) -> list:
 
     for f in video_fmts:
         h = f.get("height")
-        if not h or h in seen_heights:
+        url = f.get("url")
+        if not h or not url:
+            continue
+        if h in seen_heights or url in seen_urls:
             continue
         seen_heights.add(h)
-
-        url = f.get("url")
-        if not url:
-            continue
+        seen_urls.add(url)
 
         h_str = str(h)
         label = f"{h}p"
@@ -151,7 +183,15 @@ def _build_formats(info: dict, platform: str) -> list:
 
 
 def _get_audio_url(info: dict) -> str | None:
-    """Audio-only URL বের করো।"""
+    """সত্যিকারের audio-only URL বের করো (যদি থাকে)।
+
+    আগে এখানে কোনো আলাদা audio-only stream না পেলে পুরো video URL-ই
+    fallback হিসেবে ফেরত দেওয়া হতো — তার ফলে "MP3 নামাও" বাটনে চাপলে
+    আসলে পুরো ভিডিও ফাইল নেমে যেত (নাম শুধু audio.mp3)। TikTok/Facebook-এর
+    মতো platform-এ সাধারণত video+audio একসাথে মেশানো থাকে, আলাদা
+    audio track থাকে না — তাই এখন সেক্ষেত্রে honestly None রিটার্ন করা হয়
+    এবং frontend audio ডাউনলোড বাটন বন্ধ রাখে/স্পষ্ট মেসেজ দেখায়।
+    """
     raw_formats = info.get("formats") or []
     audio_fmts = [
         f for f in raw_formats
@@ -163,9 +203,5 @@ def _get_audio_url(info: dict) -> str | None:
         # Best audio (highest abr)
         audio_fmts.sort(key=lambda f: f.get("abr") or 0, reverse=True)
         return audio_fmts[0].get("url")
-
-    # Fallback: video format থেকে audio নাও
-    if info.get("url"):
-        return info["url"]
 
     return None

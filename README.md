@@ -3,20 +3,24 @@
 > Multi-platform video downloader — TikTok, Instagram, YouTube, Facebook, Twitter
 > Zero server bandwidth · Direct download · No new tab
 
-**Live site:** https://vidlink.10001mb.com
+**Live site:** তোমার Render URL (বা পরে বসানো custom domain)
 
 ---
 
 ## Architecture
 
+শুধু ২টা সার্ভিস — InfinityFree আর দরকার নেই। Render একই সাথে frontend
+(static site) আর backend (API) দুটোই সার্ভ করে।
+
 ```
-Browser (InfinityFree)
-    ↓  POST /api/info  (2KB JSON only)
-Render Backend  ←  yt-dlp extracts CDN URL
+Browser
+    ↓  GET /                (Render থেকেই frontend সার্ভ হয়)
+    ↓  POST /api/info       (2KB JSON only)
+Render (Flask)  ←  yt-dlp / RapidAPI দিয়ে CDN URL বের করে
     ↓  returns CDN URL to browser
 Browser
-    ↓  GET /?url=CDN_URL
-Cloudflare Worker  ←  streams video from CDN
+    ↓  GET <worker>?url=CDN_URL
+Cloudflare Worker  ←  streams video/audio from CDN
     ↓
 File downloads directly ✅
 ```
@@ -24,19 +28,23 @@ File downloads directly ✅
 **Render bandwidth: ~2KB per request (zero video)**
 **Cloudflare: unlimited free bandwidth**
 
+TikTok-এর জন্য `RAPIDAPI_KEY` সেট থাকলে backend প্রথমে watermark-free HD +
+আসল আলাদা audio track আনার চেষ্টা করে (বেশি reliable), না থাকলে yt-dlp
+দিয়ে fallback করে।
+
 ---
 
 ## Folder Structure
 
 ```
 vidlink-pro/
-├── frontend/          ← InfinityFree-তে upload করো
+├── frontend/           ← Render থেকেই সার্ভ হয় (backend/app.py এটা পড়ে)
 │   ├── index.html
 │   └── assets/
 │       ├── style.css
 │       └── main.js
 │
-├── backend/           ← Render-এ deploy করো
+├── backend/            ← Render-এ deploy করো (frontend+API দুটোই এখান থেকে চলে)
 │   ├── app.py
 │   ├── requirements.txt
 │   ├── render.yaml
@@ -44,7 +52,7 @@ vidlink-pro/
 │       ├── ytdlp_handler.py
 │       └── api_handler.py
 │
-└── cloudflare-worker/  ← Cloudflare Workers-এ paste করো
+└── cloudflare-worker/  ← Cloudflare Workers-এ paste করো (video/audio proxy)
     └── worker.js
 ```
 
@@ -52,51 +60,56 @@ vidlink-pro/
 
 ## Setup Guide
 
-### Step 1: Render Backend Deploy
+### Step 1: Render Deploy (frontend + backend একসাথে)
 
-1. GitHub-এ এই repo fork করো
-2. https://render.com → New Web Service
-3. GitHub repo connect করো
-4. **Root directory:** `backend`
-5. **Build command:** `pip install -r requirements.txt`
-6. **Start command:** `gunicorn app:app --bind 0.0.0.0:$PORT --workers 2`
-7. Environment Variables:
-   - `RAPIDAPI_KEY` = তোমার RapidAPI key
-8. Deploy করো → URL পাবে (যেমন: `https://vidlink-api.onrender.com`)
+1. GitHub-এ এই repo fork/push করো
+2. https://render.com → New Web Service → GitHub repo connect করো
+3. `render.yaml` থাকায় Render নিজে থেকেই root directory (`backend`), build
+   command, start command detect করে নেবে (Blueprint হিসেবে দেখাবে)
+4. Environment Variables:
+   - `RAPIDAPI_KEY` = তোমার RapidAPI key (TikTok HD/audio-এর জন্য, optional)
+5. Deploy করো → URL পাবে (যেমন: `https://vidlink-pro.onrender.com`)
+6. এই একই URL-এ গেলে পুরো ওয়েবসাইট দেখা যাবে — আলাদা frontend hosting লাগবে না
 
 ### Step 2: Cloudflare Worker Deploy
 
 1. https://dash.cloudflare.com → Workers & Pages → Create
 2. `cloudflare-worker/worker.js` এর content paste করো
-3. `ALLOWED_ORIGIN` = `https://vidlink.10001mb.com` (already set)
-4. Deploy করো → Worker URL পাবে
+3. Deploy করো → Worker URL পাবে
 
 ### Step 3: Frontend Config Update
 
-`frontend/assets/main.js` এ দুটো URL update করো:
+`frontend/assets/main.js` এ Worker URL update করো (API_BASE খালি রাখো —
+same-origin এ কাজ করবে):
 
 ```js
-const API_BASE  = "https://vidlink-api.onrender.com";   // তোমার Render URL
+const API_BASE  = "";  // Render নিজেই frontend+API সার্ভ করে
 const CF_WORKER = "https://vidlink-worker.xxx.workers.dev"; // তোমার Worker URL
 ```
 
-### Step 4: InfinityFree Upload
+### Step 4 (ঐচ্ছিক): Custom Domain
 
-1. `frontend/` folder-এর সব file upload করো
-2. `index.html` → root-এ
-3. `assets/` folder → root-এ
+Render dashboard → Settings → Custom Domain-এ নিজের কেনা ডোমেইন যোগ করলে
+পুরো সাইট (frontend + API) সেই ডোমেইন থেকেই চলবে। CORS/Worker কনফিগ ওপেন
+রাখা হয়েছে বলে ডোমেইন বদলালে কোথাও আলাদা করে কিছু বদলাতে হবে না।
 
 ---
 
 ## Features
 
-- ✅ TikTok (no watermark)
+- ✅ TikTok (no watermark, via RapidAPI when `RAPIDAPI_KEY` সেট থাকে)
 - ✅ Instagram (Reels, Posts)
-- ✅ YouTube
+- ✅ YouTube (progressive formats — এখানে ৭২০p পর্যন্ত পাওয়া যায়, কারণ
+  ১০৮০p+ আলাদা video/audio merge (ffmpeg) দরকার হয় যা zero-bandwidth
+  আর্কিটেকচারে ইচ্ছাকৃতভাবে এড়ানো হয়েছে)
 - ✅ Facebook
 - ✅ Twitter / X
-- ✅ Audio extract (MP3/M4A)
-- ✅ Multi-resolution (4K → 360p)
+- ✅ Audio extract (MP3/M4A) — শুধু তখনই দেখানো হয় যখন সত্যিকারের আলাদা
+  audio-only track পাওয়া যায় (নাহলে honestly অনুপলব্ধ দেখানো হয়, পুরো
+  ভিডিও চালিয়ে দেওয়া হয় না)
+- ✅ প্রতিটা resolution বাটন সত্যিই আলাদা ফাইল/quality — ডুপ্লিকেট url
+  থাকলে বাদ দেওয়া হয়
+- ✅ Multi-resolution (4K → 360p, উপলব্ধ থাকলে)
 - ✅ Language switcher (বাংলা / English)
 - ✅ Direct download (no new tab)
 - ✅ Zero server bandwidth

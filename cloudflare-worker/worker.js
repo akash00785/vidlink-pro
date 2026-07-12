@@ -9,8 +9,10 @@
  * এই পুরো file paste করো, তারপর Deploy করো।
  */
 
-// তোমার InfinityFree domain এখানে দাও (CORS-এর জন্য)
-const ALLOWED_ORIGIN = "https://vidlink.10001mb.com";
+// এই Worker শুধু CDN থেকে ফাইল pipe করে ব্রাউজারে পাঠায় — কোনো cookie/session
+// ব্যবহার হয় না, তাই origin খোলা রাখা হয়েছে (Render-এ custom domain বসালেও
+// এখানে কিছু বদলাতে হবে না)।
+const ALLOWED_ORIGIN = "*";
 
 export default {
   async fetch(request) {
@@ -42,14 +44,21 @@ export default {
     }
 
     // শুধু known CDN domains allow করো (security)
+    // TikTok অনেক আলাদা আলাদা CDN hostname ব্যবহার করে (v16/v19/v77/vXX-webapp,
+    // p16-sign-*, muscdn.com ইত্যাদি) — আগে শুধু ৩টা নির্দিষ্ট hostname ছিল
+    // বলে বাকি TikTok CDN host গুলো "Unrecognized" হয়ে যেত। এখন generic
+    // "tiktok"/"tiktokcdn"/"muscdn" প্যাটার্নে match করা হচ্ছে।
     const allowedHosts = [
-      "v19-webapp.tiktok.com",
-      "v16-webapp.tiktok.com",
-      "v77.tiktok.com",
+      "tiktokcdn",
+      "tiktokv.com",
+      "muscdn.com",
+      ".tiktok.com",
       "scontent.cdninstagram.com",
+      "cdninstagram.com",
       "scontent-",
       "googlevideo.com",
       "youtube.com",
+      "ytimg.com",
       "fbcdn.net",
       "video.twimg.com",
       "pbs.twimg.com",
@@ -62,16 +71,22 @@ export default {
     }
 
     try {
-      // CDN থেকে fetch করো
+      // CDN থেকে fetch করো — প্রতিটা platform তার নিজের Referer আশা করে।
+      // আগে সবসময় TikTok-এর Referer পাঠানো হতো, তাই অন্য platform-এর
+      // (Facebook/Instagram/YouTube) CDN মাঝে মাঝে ভুল Referer দেখে
+      // request প্রত্যাখ্যান করতে পারত।
+      const fetchHeaders = {
+        // Browser-এর মতো দেখাও CDN-কে
+        "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept":          "*/*",
+        "Accept-Encoding": "identity",
+        "Range":           request.headers.get("Range") || "bytes=0-",
+      };
+      const referer = refererFor(parsed.hostname);
+      if (referer) fetchHeaders["Referer"] = referer;
+
       const cdnResp = await fetch(targetUrl, {
-        headers: {
-          // Browser-এর মতো দেখাও CDN-কে
-          "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Referer":         "https://www.tiktok.com/",
-          "Accept":          "*/*",
-          "Accept-Encoding": "identity",
-          "Range":           request.headers.get("Range") || "bytes=0-",
-        },
+        headers: fetchHeaders,
         redirect: "follow",
       });
 
@@ -124,6 +139,18 @@ function corsHeaders() {
     "Access-Control-Allow-Headers": "Content-Type, Range",
     "Access-Control-Expose-Headers": "Content-Length, Content-Range",
   };
+}
+
+// Target CDN hostname দেখে সঠিক Referer বেছে নাও — অনেক CDN (বিশেষ করে
+// TikTok) Referer না মিললে বা ভুল হলে 403 দেয়।
+function refererFor(hostname) {
+  const h = hostname.toLowerCase();
+  if (h.includes("tiktok"))                          return "https://www.tiktok.com/";
+  if (h.includes("instagram") || h.includes("cdninstagram")) return "https://www.instagram.com/";
+  if (h.includes("fbcdn") || h.includes("facebook"))  return "https://www.facebook.com/";
+  if (h.includes("googlevideo") || h.includes("youtube") || h.includes("ytimg")) return "https://www.youtube.com/";
+  if (h.includes("twimg") || h.includes("twitter") || h.includes("x.com"))       return "https://twitter.com/";
+  return undefined;
 }
 
 function guessContentType(filename) {

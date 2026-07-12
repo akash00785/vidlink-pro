@@ -1,12 +1,17 @@
+# এই একই service এখন backend (Flask API) আর frontend (static site)
+# দুটোই একসাথে সার্ভ করে — আলাদা InfinityFree হোস্টিং আর দরকার নেই।
+# Render dashboard-এ পরে নিজের কেনা ডোমেইন (custom domain) attach করলেই
+# পুরো সাইট (frontend + API) সেই ডোমেইন থেকে চলবে।
 services:
   - type: web
-    name: vidlink-api
+    name: vidlink-pro
     runtime: python
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
     plan: free
     envVars:
       - key: RAPIDAPI_KEY
-        sync: false   # Render dashboard থেকে manually দাও
-    healthCheckPath: /
+        sync: false   # Render dashboard থেকে manually দাও (TikTok HD + audio-এর জন্য লাগবে)
+    healthCheckPath: /api/health
     autoDeploy: true

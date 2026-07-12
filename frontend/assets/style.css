@@ -334,6 +334,19 @@ body {
   color: var(--text-dim); margin-top: 10px;
 }
 
+.download-btn.disabled,
+.download-btn:disabled {
+  opacity: 0.4; cursor: not-allowed; box-shadow: none;
+}
+
+.audio-unavailable-note {
+  font-size: 13px; color: var(--text-muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 16px; text-align: center;
+}
+
 /* Tab Panel */
 .tab-panel { }
 .tab-panel.hidden { display: none; }

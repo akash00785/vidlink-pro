@@ -26,14 +26,14 @@ def get_hd_info(url: str, api_key: str) -> dict:
     data = resp.json()
 
     video_url = (data.get("video") or [None])[0]
-    audio_url = (data.get("music") or [None])[0]
+    audio_url = (data.get("music") or [None])[0]  # TikTok-এর আসল আলাদা audio/music track
     title     = data.get("title", "TikTok Video")
     cover     = data.get("cover", "")
 
     formats = []
     if video_url:
         formats.append({
-            "label":      "HD",
+            "label":      "HD (No Watermark)",
             "height":     1080,
             "url":        video_url,
             "badge":      "HD",
@@ -43,11 +43,13 @@ def get_hd_info(url: str, api_key: str) -> dict:
         })
 
     return {
-        "title":     title,
-        "thumbnail": cover,
-        "duration":  None,
-        "uploader":  "",
-        "platform":  "tiktok",
-        "formats":   formats,
-        "audio_url": audio_url,
+        "title":           title,
+        "thumbnail":       cover,
+        "duration":        None,
+        "uploader":        "",
+        "platform":        "tiktok",
+        "formats":         formats,
+        "audio_url":       audio_url,
+        # "music" field সত্যিই আলাদা audio track — তাই এটা সত্যিকারের audio_available
+        "audio_available": audio_url is not None,
     }

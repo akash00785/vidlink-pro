@@ -3,10 +3,13 @@
    ══════════════════════════════════════════════ */
 
 // ── Config ──────────────────────────────────────
-// তোমার Render backend URL এখানে দাও (deploy করার পর)
-const API_BASE = "https://vidlink-pro.onrender.com";
+// Frontend আর API এখন একই Render service থেকে সার্ভ হয় (InfinityFree আর
+// লাগে না), তাই API_BASE খালি রেখে same-origin relative path ব্যবহার
+// করা হচ্ছে — /api/info নিজে থেকেই সঠিক domain-এ যাবে।
+const API_BASE = "";
 
-// তোমার Cloudflare Worker URL এখানে দাও (deploy করার পর)
+// তোমার Cloudflare Worker URL এখানে দাও (video/audio proxy — এটা এখনো
+// আলাদা domain-এ থাকে, কারণ CDN streaming Cloudflare-এই ফ্রি + unlimited)
 const CF_WORKER = "https://little-king-7521.renakashkhan0196581.workers.dev";
 
 // ── i18n ────────────────────────────────────────
@@ -43,6 +46,7 @@ const LANGS = {
     errorGeneric: "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করো।",
     errorInvalid: "লিংকটি সঠিক মনে হচ্ছে না।",
     errorUnsupported: "এই platform এখনো supported নয়।",
+    audioUnavailable: "এই ভিডিওর জন্য আলাদা অডিও ট্র্যাক পাওয়া যায়নি, তাই MP3 বের করা সম্ভব হচ্ছে না।",
   },
   en: {
     tagline: "Any Platform — One Box",
@@ -76,6 +80,7 @@ const LANGS = {
     errorGeneric: "Something went wrong. Please try again.",
     errorInvalid: "This doesn't look like a valid link.",
     errorUnsupported: "This platform is not supported yet.",
+    audioUnavailable: "This video has no separate audio track, so MP3 extraction isn't available.",
   }
 };
 
@@ -290,8 +295,11 @@ function showResult(data) {
   videoDuration.textContent = data.duration ? `⏱ ${formatDuration(data.duration)}` : "";
   videoUploader.textContent = data.uploader ? `👤 ${data.uploader}` : "";
 
-  // Audio URL
-  currentAudioUrl = data.audio_url || null;
+  // Audio URL — audio_available সত্যি না হলে audio_url থাকলেও ব্যবহার
+  // করা হবে না (server-side এখন honest, কিন্তু ডাবল-চেক হিসেবে রাখা হলো)
+  const audioAvailable = !!data.audio_available && !!data.audio_url;
+  currentAudioUrl = audioAvailable ? data.audio_url : null;
+  updateAudioAvailability(audioAvailable);
 
   // Formats / resolutions
   currentFormats = data.formats || [];
@@ -303,6 +311,26 @@ function showResult(data) {
 
   // Switch to video tab
   switchTab("video");
+}
+
+// ── Audio Availability ───────────────────────────
+// আগে আলাদা audio track না থাকলেও চুপচাপ পুরো ভিডিও "audio.mp3" নামে
+// নেমে যেত। এখন সেই বদলে বাটন বন্ধ রেখে স্পষ্ট কারণ দেখানো হয়।
+function updateAudioAvailability(available) {
+  const t = LANGS[currentLang];
+  downloadAudioBtn.disabled = !available;
+  downloadAudioBtn.classList.toggle("disabled", !available);
+  let note = panelAudio.querySelector(".audio-unavailable-note");
+  if (!available) {
+    if (!note) {
+      note = document.createElement("p");
+      note.className = "audio-unavailable-note";
+      panelAudio.insertBefore(note, panelAudio.firstChild);
+    }
+    note.textContent = t.audioUnavailable;
+  } else if (note) {
+    note.remove();
+  }
 }
 
 // ── Resolution Grid ──────────────────────────────
@@ -338,7 +366,11 @@ downloadVideoBtn.addEventListener("click", () => {
 });
 
 downloadAudioBtn.addEventListener("click", () => {
-  if (!currentAudioUrl) return;
+  const t = LANGS[currentLang];
+  if (!currentAudioUrl) {
+    showError(t.audioUnavailable);
+    return;
+  }
   triggerDownload(currentAudioUrl, "audio.mp3");
 });
 
