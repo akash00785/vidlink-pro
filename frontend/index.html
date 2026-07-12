@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VidLink Pro — যেকোনো ভিডিও নামাও</title>
+  <meta name="description" content="TikTok, Instagram, YouTube, Facebook ভিডিও সরাসরি নামাও। কোনো নতুন ট্যাব খুলবে না।" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬇</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">⬇</div>
+    <span class="nav-logo-text">VidLink<span class="accent">Pro</span></span>
+  </div>
+  <div class="nav-links">
+    <a href="#features" data-i18n="features">Features</a>
+    <a href="#how" data-i18n="howItWorks">কীভাবে কাজ করে</a>
+    <a href="#supported" data-i18n="supported">Supported</a>
+  </div>
+  <div class="nav-right">
+    <div class="lang-switcher" id="langSwitcher">
+      <button class="lang-btn" id="langBtn">
+        <span id="langFlag">🇧🇩</span>
+        <span id="langLabel">বাংলা</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="lang-dropdown" id="langDropdown">
+        <button class="lang-option active" data-lang="bn">🇧🇩 বাংলা</button>
+        <button class="lang-option" data-lang="en">🌐 English</button>
+      </div>
+    </div>
+    <a href="https://t.me/YourBotUsername" target="_blank" class="btn-telegram">🤖 <span data-i18n="telegramBot">Telegram Bot</span></a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+    <span data-i18n="tagline">যেকোনো Platform — একটাই বক্স</span>
+  </div>
+  <h1 class="hero-title">
+    <span data-i18n="hero1">যেকোনো ভিডিও</span><br/>
+    <span data-i18n="hero2">সরাসরি নামাও</span>
+  </h1>
+  <p class="hero-sub" data-i18n="subtitle">TikTok, Instagram, YouTube, Facebook — লিংক দাও, resolution বেছে নাও, সরাসরি নামবে।</p>
+  <div class="platform-badges">
+    <span class="platform-badge">🎵 TikTok</span>
+    <span class="platform-badge">📸 Instagram</span>
+    <span class="platform-badge">▶️ YouTube</span>
+    <span class="platform-badge">👍 Facebook</span>
+    <span class="platform-badge">🐦 Twitter / X</span>
+  </div>
+</section>
+
+<!-- MAIN CARD -->
+<section class="card-section">
+  <div class="main-card">
+
+    <!-- URL Input -->
+    <div class="input-wrap" id="inputWrap">
+      <div class="platform-tag hidden" id="platformTag"></div>
+      <div class="globe-icon" id="globeIcon">🌐</div>
+      <input type="url" id="urlInput" data-i18n-placeholder="placeholder" placeholder="লিংক paste করো... (যেকোনো platform)" autocomplete="off" />
+      <button class="fetch-btn" id="fetchBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span data-i18n="fetchBtn">Fetch করো</span>
+      </button>
+    </div>
+    <p class="demo-hint" id="demoHint" data-i18n="demoHint">💡 Demo: "tiktok.com/video" লিখে দেখো</p>
+
+    <!-- Loading -->
+    <div class="loading hidden" id="loadingArea">
+      <div class="spinner"></div>
+      <span data-i18n="fetchingMsg">ভিডিও তথ্য বের করছি...</span>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box hidden" id="errorBox">
+      <span>⚠️</span> <span id="errorMsg"></span>
+    </div>
+
+    <!-- Result -->
+    <div class="result hidden" id="resultArea">
+      <!-- Video Info -->
+      <div class="video-info">
+        <div class="video-thumb" id="videoThumb">🎬</div>
+        <div class="video-meta">
+          <div class="video-meta-top">
+            <span class="platform-label" id="platformLabel"></span>
+            <span class="found-badge">✓ <span data-i18n="foundBadge">পাওয়া গেছে</span></span>
+          </div>
+          <div class="video-title" id="videoTitle"></div>
+          <div class="video-stats">
+            <span id="videoDuration"></span>
+            <span id="videoUploader"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="video" id="tabVideo">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          <span data-i18n="videoTab">ভিডিও</span>
+        </button>
+        <button class="tab" data-tab="audio" id="tabAudio">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span data-i18n="audioTab">অডিও (MP3)</span>
+        </button>
+      </div>
+
+      <!-- Video Panel -->
+      <div class="tab-panel" id="panelVideo">
+        <div class="section-label" data-i18n="resLabel">Resolution বেছে নাও</div>
+        <div class="resolution-grid" id="resolutionGrid"></div>
+        <button class="download-btn" id="downloadVideoBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="downloadVideoLabel"></span>
+        </button>
+        <p class="no-tab-note" data-i18n="noNewTab">🔒 কোনো নতুন ট্যাব খুলবে না · সরাসরি আপনার ডিভাইসে</p>
+      </div>
+
+      <!-- Audio Panel -->
+      <div class="tab-panel hidden" id="panelAudio">
+        <div class="section-label" data-i18n="audioQualityLabel">Audio Quality বেছে নাও</div>
+        <div class="resolution-grid">
+          <button class="res-btn active" data-audio="320">MP3 320kbps</button>
+          <button class="res-btn" data-audio="128">MP3 128kbps</button>
+          <button class="res-btn" data-audio="m4a">M4A</button>
+        </div>
+        <button class="download-btn download-btn-audio" id="downloadAudioBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="downloadAudio">MP3 নামাও — সরাসরি</span>
+        </button>
+        <p class="no-tab-note" data-i18n="noNewTab">🔒 কোনো নতুন ট্যাব খুলবে না · সরাসরি আপনার ডিভাইসে</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="features" id="features">
+    <div class="feature-card">
+      <div class="feature-icon" style="color:#f59e0b">⚡</div>
+      <div class="feature-title" data-i18n="feat1Title">Server Bypass</div>
+      <div class="feature-desc" data-i18n="feat1Desc">Server-এ কোনো bandwidth খরচ হয় না</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="color:#22c55e">🛡️</div>
+      <div class="feature-title" data-i18n="feat2Title">No Watermark</div>
+      <div class="feature-desc" data-i18n="feat2Desc">Watermark ছাড়া ডাউনলোড</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="color:#a855f7">🎵</div>
+      <div class="feature-title" data-i18n="feat3Title">Audio Extract</div>
+      <div class="feature-desc" data-i18n="feat3Desc">MP3/M4A বের করো যেকোনো ভিডিও থেকে</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="color:#3b82f6">🌍</div>
+      <div class="feature-title" data-i18n="feat4Title">5 Platforms</div>
+      <div class="feature-desc" data-i18n="feat4Desc">TikTok, Instagram, YouTube, Facebook, Twitter</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <h2 class="section-title" data-i18n="howTitle">কীভাবে কাজ করে?</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">১</div>
+      <div class="step-title" data-i18n="step1Title">লিংক দাও</div>
+      <div class="step-desc" data-i18n="step1Desc">যেকোনো platform-এর video লিংক paste করো</div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step">
+      <div class="step-num">২</div>
+      <div class="step-title" data-i18n="step2Title">Resolution বেছে নাও</div>
+      <div class="step-desc" data-i18n="step2Desc">4K থেকে 360p পর্যন্ত যেটা চাও</div>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step">
+      <div class="step-num">৩</div>
+      <div class="step-title" data-i18n="step3Title">সরাসরি নামবে</div>
+      <div class="step-desc" data-i18n="step3Desc">কোনো নতুন ট্যাব ছাড়া সরাসরি ডিভাইসে</div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <p>© 2025 VidLink Pro · <span data-i18n="footerNote">শুধু ব্যক্তিগত ব্যবহারের জন্য</span></p>
+</footer>
+
+<script src="assets/main.js"></script>
+</body>
+</html>
