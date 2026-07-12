@@ -7,7 +7,7 @@
 const API_BASE = "https://vidlink-pro.onrender.com";
 
 // তোমার Cloudflare Worker URL এখানে দাও (deploy করার পর)
-const CF_WORKER = "https://vidlink-worker.YOUR-SUBDOMAIN.workers.dev";
+const CF_WORKER = "https://little-king-7521.renakashkhan0196581.workers.dev";
 
 // ── i18n ────────────────────────────────────────
 const LANGS = {
