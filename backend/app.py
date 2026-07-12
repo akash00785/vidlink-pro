@@ -18,6 +18,7 @@ app = Flask(__name__)
 ALLOWED_ORIGINS = [
     "https://vidlink.10001mb.com",
     "http://vidlink.10001mb.com",
+    "https://vidlink-pro.renakashkhan0196581.workers.dev",
     "http://localhost",
     "http://127.0.0.1",
 ]
