@@ -351,6 +351,47 @@ body {
 .tab-panel { }
 .tab-panel.hidden { display: none; }
 
+/* HD (lazy RapidAPI resolve) button state */
+.res-btn.res-hd { position: relative; }
+.res-btn.res-loading { opacity: 0.6; cursor: wait; }
+.download-btn.resolving { opacity: 0.75; cursor: wait; }
+
+/* Photo / Slideshow Panel (TikTok ছবি পোস্ট) */
+.photo-section { }
+.photo-section.hidden { display: none; }
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.photo-item {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 8px;
+  background: rgba(255,255,255,0.03);
+}
+.photo-item img {
+  width: 100%; aspect-ratio: 3/4; object-fit: cover;
+  border-radius: 8px; display: block; background: rgba(255,255,255,0.05);
+}
+.photo-download-btn {
+  border: none; border-radius: 8px; padding: 8px 6px;
+  background: var(--grad); color: #fff; font-weight: 700;
+  font-size: 12px; cursor: pointer; transition: opacity 0.2s;
+}
+.photo-download-btn:hover { opacity: 0.92; }
+.photo-download-all {
+  width: 100%; display: flex; align-items: center;
+  justify-content: center; gap: 10px;
+  padding: 14px; border-radius: 12px; margin-bottom: 10px;
+  border: none; background: var(--grad);
+  color: #fff; font-weight: 700; font-size: 15px;
+  cursor: pointer; transition: opacity 0.2s;
+  box-shadow: 0 8px 32px rgba(124,58,237,0.4);
+}
+.photo-download-all:hover { opacity: 0.92; }
+
 /* Features */
 .features {
   display: grid; grid-template-columns: 1fr 1fr;

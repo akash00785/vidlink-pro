@@ -47,6 +47,12 @@ const LANGS = {
     errorInvalid: "লিংকটি সঠিক মনে হচ্ছে না।",
     errorUnsupported: "এই platform এখনো supported নয়।",
     audioUnavailable: "এই ভিডিওর জন্য আলাদা অডিও ট্র্যাক পাওয়া যায়নি, তাই MP3 বের করা সম্ভব হচ্ছে না।",
+    hdLabel: "HD (No Watermark)",
+    hdResolving: "HD খোঁজা হচ্ছে...",
+    hdFailed: "HD লিংক বের করা যায়নি। একটু পর আবার চেষ্টা করো।",
+    photoLabel: "ছবিগুলো — একেকটা আলাদাভাবে নামাও",
+    photoDownload: "নামাও",
+    photoDownloadAll: "সব ছবি নামাও",
   },
   en: {
     tagline: "Any Platform — One Box",
@@ -81,6 +87,12 @@ const LANGS = {
     errorInvalid: "This doesn't look like a valid link.",
     errorUnsupported: "This platform is not supported yet.",
     audioUnavailable: "This video has no separate audio track, so MP3 extraction isn't available.",
+    hdLabel: "HD (No Watermark)",
+    hdResolving: "Resolving HD...",
+    hdFailed: "Couldn't get the HD link. Please try again shortly.",
+    photoLabel: "Photos — download each one separately",
+    photoDownload: "Download",
+    photoDownloadAll: "Download all photos",
   }
 };
 
@@ -109,6 +121,8 @@ let currentFormats = [];
 let selectedResIndex = 0;
 let selectedAudioFmt = "320";
 let currentAudioUrl = null;
+let currentUrl = null;       // সর্বশেষ fetch করা URL — HD lazy resolve-এর জন্য লাগে
+let isResolvingHd = false;   // HD ডাউনলোড বাটনে ডাবল-ক্লিক/রেসের বিরুদ্ধে গার্ড
 
 // ── DOM Refs ─────────────────────────────────────
 const urlInput        = document.getElementById("urlInput");
@@ -138,6 +152,9 @@ const langBtn         = document.getElementById("langBtn");
 const langDropdown    = document.getElementById("langDropdown");
 const langFlag        = document.getElementById("langFlag");
 const langLabel       = document.getElementById("langLabel");
+const videoAudioSection = document.getElementById("videoAudioSection");
+const photoSection    = document.getElementById("photoSection");
+const photoGrid       = document.getElementById("photoGrid");
 
 // ── Language ─────────────────────────────────────
 function applyLang(lang) {
@@ -226,6 +243,7 @@ async function fetchVideo() {
     return;
   }
 
+  currentUrl = url;
   setState("loading");
 
   try {
@@ -295,14 +313,34 @@ function showResult(data) {
   videoDuration.textContent = data.duration ? `⏱ ${formatDuration(data.duration)}` : "";
   videoUploader.textContent = data.uploader ? `👤 ${data.uploader}` : "";
 
+  // TikTok ফটো/স্লাইডশো পোস্ট — ভিডিও/অডিও ট্যাব লুকিয়ে ছবির গ্রিড দেখানো হয়
+  if (data.is_photo) {
+    videoAudioSection.classList.add("hidden");
+    photoSection.classList.remove("hidden");
+    buildPhotoGrid(data.images || []);
+    return;
+  }
+  photoSection.classList.add("hidden");
+  videoAudioSection.classList.remove("hidden");
+
   // Audio URL — audio_available সত্যি না হলে audio_url থাকলেও ব্যবহার
   // করা হবে না (server-side এখন honest, কিন্তু ডাবল-চেক হিসেবে রাখা হলো)
   const audioAvailable = !!data.audio_available && !!data.audio_url;
   currentAudioUrl = audioAvailable ? data.audio_url : null;
   updateAudioAvailability(audioAvailable);
 
-  // Formats / resolutions
-  currentFormats = data.formats || [];
+  // Formats / resolutions — Normal/SD সবসময় yt-dlp থেকে আসে (ফ্রি, সাথে
+  // সাথে)। TikTok-এ hd_available সত্যি হলে একটা lazy "HD (No Watermark)"
+  // এন্ট্রি জুড়ে দেওয়া হয় — এটাতে ক্লিক করলেই তখন RapidAPI কল হবে।
+  currentFormats = [...(data.formats || [])];
+  if (data.hd_available) {
+    currentFormats.push({
+      label: LANGS[currentLang].hdLabel,
+      badge: "HD",
+      badgeColor: "#3b82f6",
+      lazyHd: true,
+    });
+  }
   buildResolutionGrid();
 
   // Default to first resolution
@@ -311,6 +349,27 @@ function showResult(data) {
 
   // Switch to video tab
   switchTab("video");
+}
+
+// ── Photo / Slideshow Grid (TikTok ছবি পোস্ট) ────
+function buildPhotoGrid(images) {
+  const t = LANGS[currentLang];
+  photoGrid.innerHTML = "";
+  images.forEach((imgUrl, i) => {
+    const item = document.createElement("div");
+    item.className = "photo-item";
+    const img = document.createElement("img");
+    img.src = imgUrl;
+    img.alt = `photo-${i + 1}`;
+    img.loading = "lazy";
+    const btn = document.createElement("button");
+    btn.className = "photo-download-btn";
+    btn.textContent = `${t.photoDownload} ${i + 1}`;
+    btn.addEventListener("click", () => triggerDownload(imgUrl, `tiktok_photo_${i + 1}.jpg`));
+    item.appendChild(img);
+    item.appendChild(btn);
+    photoGrid.appendChild(item);
+  });
 }
 
 // ── Audio Availability ───────────────────────────
@@ -359,10 +418,52 @@ function updateDownloadVideoLabel() {
 }
 
 // ── Download ─────────────────────────────────────
-downloadVideoBtn.addEventListener("click", () => {
+downloadVideoBtn.addEventListener("click", async () => {
+  const t = LANGS[currentLang];
   const fmt = currentFormats[selectedResIndex];
-  if (!fmt) return;
-  triggerDownload(fmt.url, fmt.filename || "video.mp4");
+  if (!fmt || isResolvingHd) return;
+
+  // Normal/SD ফরম্যাটে সরাসরি yt-dlp-এর দেওয়া url থাকে — সাথে সাথে নামবে
+  if (!fmt.lazyHd) {
+    triggerDownload(fmt.url, fmt.filename || "video.mp4");
+    return;
+  }
+
+  // HD (No Watermark) — এখন RapidAPI কল করে আসল লিংক বের করা হচ্ছে
+  isResolvingHd = true;
+  const originalLabel = downloadVideoLabel.textContent;
+  downloadVideoLabel.textContent = t.hdResolving;
+  downloadVideoBtn.classList.add("resolving");
+  downloadVideoBtn.disabled = true;
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/tiktok/hd`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: currentUrl }),
+    });
+    const result = await resp.json().catch(() => ({}));
+
+    if (!resp.ok || !result.success || !result.hd_url) {
+      showError(result.error || t.hdFailed);
+      return;
+    }
+
+    triggerDownload(result.hd_url, "tiktok_hd.mp4");
+
+    // HD resolve-এ real audio track পাওয়া গেলে audio ট্যাবও আপডেট করে দাও
+    if (result.audio_available && result.audio_url) {
+      currentAudioUrl = result.audio_url;
+      updateAudioAvailability(true);
+    }
+  } catch (err) {
+    showError(t.hdFailed);
+  } finally {
+    isResolvingHd = false;
+    downloadVideoBtn.classList.remove("resolving");
+    downloadVideoBtn.disabled = false;
+    downloadVideoLabel.textContent = originalLabel;
+  }
 });
 
 downloadAudioBtn.addEventListener("click", () => {

@@ -24,8 +24,11 @@ Browser
 2. `render.yaml` আছে বলে Render নিজে থেকেই root directory (`backend`),
    build/start command detect করবে
 3. Environment Variables-এ যোগ করো:
-   - `RAPIDAPI_KEY` = তোমার RapidAPI key (TikTok HD + আসল audio track-এর
-     জন্য দরকার — না দিলেও চলবে, তখন yt-dlp দিয়ে fallback হবে)
+   - `RAPIDAPI_KEY` = তোমার RapidAPI key (TikTok HD বাটন + ফটো/স্লাইডশো
+     পোস্টের জন্য দরকার — না দিলেও Normal/SD TikTok ডাউনলোড yt-dlp দিয়ে
+     ঠিকই কাজ করবে, শুধু HD বাটন আর ফটো পোস্ট সাপোর্ট বন্ধ থাকবে)।
+     একাধিক key থাকলে কমা দিয়ে দাও: `keyA,keyB,keyC` — একটা key
+     rate-limit (429) খেলে backend অটো পরের key-তে সুইচ করবে।
 4. Deploy করো → URL পাবে, যেমন: `https://vidlink-pro.onrender.com`
 5. এই একই URL খুললেই পুরো ওয়েবসাইট দেখা যাবে
 
@@ -85,7 +88,9 @@ origin আগে থেকেই খোলা রাখা হয়েছে।
 |--------|---------|
 | "ভিডিও তথ্য বের করতে পারিনি" দেখাচ্ছে | লিংকটা সঠিক platform-এর কিনা, এবং ভিডিওটা public কিনা দেখো |
 | Download শুরু হচ্ছে না | CF_WORKER URL ঠিক আছে কিনা, আর Worker deploy হয়েছে কিনা চেক করো |
-| Audio বাটন বন্ধ দেখাচ্ছে | এই ভিডিওতে সত্যিকারের আলাদা audio track নেই (TikTok/Facebook-এর অনেক ভিডিওতেই এটা স্বাভাবিক) — RAPIDAPI_KEY দিলে TikTok-এর জন্য কাজ করবে |
+| Audio বাটন বন্ধ দেখাচ্ছে | এই ভিডিওতে সত্যিকারের আলাদা audio track নেই (TikTok/Facebook-এর অনেক ভিডিওতেই এটা স্বাভাবিক) — RAPIDAPI_KEY দিলে TikTok HD resolve করলে audio পাওয়া যেতে পারে |
+| TikTok-এ HD বাটন দেখাচ্ছে না | RAPIDAPI_KEY সেট করা নেই — Normal/SD তবু কাজ করবে |
+| TikTok ফটো/স্লাইডশো পোস্ট এরর দিচ্ছে | RAPIDAPI_KEY সেট করা নেই বা সব key exhausted — ফটো পোস্টের জন্য অন্তত একটা কার্যকর key লাগবেই |
 | Render slow | প্রথমবার ৩০ সেকেন্ড লাগে (free plan spin-up) |
 
 ---
@@ -104,8 +109,10 @@ vidlink-pro/
 │   ├── render.yaml         ← Render deploy config
 │   ├── requirements.txt
 │   └── services/
-│       ├── ytdlp_handler.py
-│       └── api_handler.py
+│       ├── ytdlp_handler.py    ← Normal/SD (yt-dlp) + TikTok photo detection
+│       ├── api_handler.py      ← TikTok HD/photo (RapidAPI) + key rotation
+│       ├── key_manager.py      ← একাধিক RapidAPI key rotation
+│       └── rapidapi_cache.py   ← RapidAPI রেসপন্স ক্যাশ (কোটা বাঁচাতে)
 ├── cloudflare-worker/
 │   └── worker.js           ← Video/audio proxy (Cloudflare Worker-এ দিতে হবে)
 └── SETUP-GUIDE.md          ← এই গাইড

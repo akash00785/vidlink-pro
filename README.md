@@ -28,9 +28,11 @@ File downloads directly ✅
 **Render bandwidth: ~2KB per request (zero video)**
 **Cloudflare: unlimited free bandwidth**
 
-TikTok-এর জন্য `RAPIDAPI_KEY` সেট থাকলে backend প্রথমে watermark-free HD +
-আসল আলাদা audio track আনার চেষ্টা করে (বেশি reliable), না থাকলে yt-dlp
-দিয়ে fallback করে।
+TikTok-এর জন্য **Normal/SD সবসময় ফ্রি yt-dlp দিয়ে সাথে সাথে** আসে (কোনো
+API key লাগে না)। `RAPIDAPI_KEY` সেট থাকলে একটা আলাদা **"HD (No
+Watermark)"** বাটন দেখা যায় — সেটাতে ক্লিক করলে তখনই RapidAPI কল হয়
+(lazy resolve, কোটা বাঁচাতে)। TikTok ফটো/স্লাইডশো পোস্ট (`/photo/` URL)
+সবসময় RapidAPI দিয়েই হয়, কারণ yt-dlp এগুলোর ছবি বের করতে পারে না।
 
 ---
 
@@ -67,7 +69,10 @@ vidlink-pro/
 3. `render.yaml` থাকায় Render নিজে থেকেই root directory (`backend`), build
    command, start command detect করে নেবে (Blueprint হিসেবে দেখাবে)
 4. Environment Variables:
-   - `RAPIDAPI_KEY` = তোমার RapidAPI key (TikTok HD/audio-এর জন্য, optional)
+   - `RAPIDAPI_KEY` = তোমার RapidAPI key (TikTok HD/ফটো পোস্ট/audio-এর
+     জন্য, optional)। একাধিক key থাকলে কমা দিয়ে দাও, যেমন:
+     `RAPIDAPI_KEY=keyA,keyB,keyC` — একটা key rate-limit (429) খেলে
+     backend নিজে থেকেই পরের key-তে সুইচ করবে।
 5. Deploy করো → URL পাবে (যেমন: `https://vidlink-pro.onrender.com`)
 6. এই একই URL-এ গেলে পুরো ওয়েবসাইট দেখা যাবে — আলাদা frontend hosting লাগবে না
 
@@ -97,7 +102,10 @@ Render dashboard → Settings → Custom Domain-এ নিজের কেনা
 
 ## Features
 
-- ✅ TikTok (no watermark, via RapidAPI when `RAPIDAPI_KEY` সেট থাকে)
+- ✅ TikTok — Normal/SD সবসময় ফ্রি yt-dlp দিয়ে; `RAPIDAPI_KEY` সেট থাকলে
+  আলাদা lazy "HD (No Watermark)" বাটন + ফটো/স্লাইডশো পোস্ট সাপোর্ট
+- ✅ একাধিক RapidAPI key rotation (comma-separated) + 45 মিনিটের
+  in-memory response cache — quota বাঁচাতে
 - ✅ Instagram (Reels, Posts)
 - ✅ YouTube (progressive formats — এখানে ৭২০p পর্যন্ত পাওয়া যায়, কারণ
   ১০৮০p+ আলাদা video/audio merge (ffmpeg) দরকার হয় যা zero-bandwidth
@@ -120,7 +128,7 @@ Render dashboard → Settings → Custom Domain-এ নিজের কেনা
 
 | Key | Value | Required |
 |-----|-------|----------|
-| `RAPIDAPI_KEY` | RapidAPI key | Optional (HD only) |
+| `RAPIDAPI_KEY` | RapidAPI key — comma-separated for multiple keys (`keyA,keyB`) | Optional (HD + TikTok photo posts only) |
 
 ---
 

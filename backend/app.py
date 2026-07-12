@@ -9,8 +9,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 
-from services.ytdlp_handler import get_video_info
-from services.api_handler import get_hd_info
+from services.ytdlp_handler import get_video_info, detect_platform
+from services.api_handler import resolve_tiktok_hd
 
 # ── Frontend এখন এই একই Render service থেকে সার্ভ হয় ──
 # আগে InfinityFree-তে আলাদাভাবে হোস্ট করতে হতো; এখন আর দরকার নেই।
@@ -57,13 +57,20 @@ def video_info():
             { "label": "1080p", "url": str, "badge": "HD", "badgeColor": "#3b82f6", "filename": str }
         ],
         "audio_url": str,
-        "audio_available": bool
+        "audio_available": bool,
+        # TikTok ভিডিও পোস্টের জন্য অতিরিক্ত:
+        "hd_available": bool,   # true হলে ফ্রন্টএন্ড /api/tiktok/hd কল করে HD resolve করতে পারবে
+        # TikTok ফটো/স্লাইডশো পোস্টের জন্য অতিরিক্ত:
+        "is_photo": bool,
+        "images": [str, ...],
     }
 
-    TikTok URL হলে, RAPIDAPI_KEY সেট করা থাকলে RapidAPI দিয়ে watermark-free
-    HD ভিডিও + আসল আলাদা audio track আনার চেষ্টা করা হয় (বেশি reliable —
-    yt-dlp-এর তুলনায় TikTok CDN 403 কম দেয়)। না থাকলে/fail করলে yt-dlp
-    দিয়ে fallback করে।
+    TikTok ভিডিও পোস্ট: Normal/SD সবসময় ফ্রি yt-dlp দিয়ে সাথে সাথেই আসে।
+    RAPIDAPI_KEY কনফিগার করা থাকলে "hd_available": true পাঠানো হয়, কিন্তু
+    RapidAPI এখানে কল হয় না — ব্যবহারকারী HD বাটনে ক্লিক করলে /api/tiktok/hd
+    দিয়ে lazy resolve হয় (কোটা বাঁচাতে)।
+    TikTok ফটো/স্লাইডশো পোস্ট (URL-এ '/photo/'): yt-dlp এগুলো বের করতে
+    পারে না, তাই সরাসরি RapidAPI দিয়ে "images" লিস্ট ফেরত দেওয়া হয়।
     """
     data = request.get_json(silent=True) or {}
     url = (data.get("url") or "").strip()
@@ -71,10 +78,8 @@ def video_info():
     if not url:
         return jsonify({"error": "URL দাও"}), 400
 
-    rapidapi_key = os.environ.get("RAPIDAPI_KEY", "") or None
-
     try:
-        info = get_video_info(url, rapidapi_key=rapidapi_key)
+        info = get_video_info(url)
         return jsonify(info)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -83,29 +88,24 @@ def video_info():
         return jsonify({"error": "ভিডিও তথ্য বের করতে পারিনি। লিংকটি সঠিক কিনা দেখো।"}), 500
 
 
-# ── HD Download Info (RapidAPI) ───────────────────────
-@app.route("/api/hd-info", methods=["POST"])
-def hd_info():
+# ── TikTok HD Resolve (RapidAPI, lazy) ────────────────
+@app.route("/api/tiktok/hd", methods=["POST"])
+def tiktok_hd_resolve():
     """
-    RapidAPI দিয়ে HD quality URL বের করে।
+    ব্যবহারকারী "HD (No Watermark)" ডাউনলোড বাটনে ক্লিক করলে তখনই ডাকা হয়।
+    /api/info-এ RapidAPI কল হয় না (শুধু প্রিভিউ দেখা visitor-দের কোটা
+    খরচ না করাতে) — আসল RapidAPI কল এখানেই হয়, key rotation + ক্যাশ-সহ।
     Body: { "url": "https://..." }
     """
     data = request.get_json(silent=True) or {}
     url = (data.get("url") or "").strip()
 
-    if not url:
-        return jsonify({"error": "URL দাও"}), 400
+    if not url or detect_platform(url) != "tiktok":
+        return jsonify({"success": False, "error": "সঠিক TikTok URL দাও।"}), 400
 
-    rapidapi_key = os.environ.get("RAPIDAPI_KEY", "")
-    if not rapidapi_key:
-        return jsonify({"error": "HD service unavailable"}), 503
-
-    try:
-        info = get_hd_info(url, rapidapi_key)
-        return jsonify(info)
-    except Exception as e:
-        app.logger.error(f"HD info error: {e}")
-        return jsonify({"error": "HD info বের করা যায়নি।"}), 500
+    result = resolve_tiktok_hd(url)
+    status = 200 if result.get("success") else 400
+    return jsonify(result), status
 
 
 if __name__ == "__main__":

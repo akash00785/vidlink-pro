@@ -104,41 +104,50 @@
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab active" data-tab="video" id="tabVideo">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          <span data-i18n="videoTab">ভিডিও</span>
-        </button>
-        <button class="tab" data-tab="audio" id="tabAudio">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          <span data-i18n="audioTab">অডিও (MP3)</span>
-        </button>
-      </div>
-
-      <!-- Video Panel -->
-      <div class="tab-panel" id="panelVideo">
-        <div class="section-label" data-i18n="resLabel">Resolution বেছে নাও</div>
-        <div class="resolution-grid" id="resolutionGrid"></div>
-        <button class="download-btn" id="downloadVideoBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span id="downloadVideoLabel"></span>
-        </button>
-        <p class="no-tab-note" data-i18n="noNewTab">🔒 কোনো নতুন ট্যাব খুলবে না · সরাসরি আপনার ডিভাইসে</p>
-      </div>
-
-      <!-- Audio Panel -->
-      <div class="tab-panel hidden" id="panelAudio">
-        <div class="section-label" data-i18n="audioQualityLabel">Audio Quality বেছে নাও</div>
-        <div class="resolution-grid">
-          <button class="res-btn active" data-audio="320">MP3 320kbps</button>
-          <button class="res-btn" data-audio="128">MP3 128kbps</button>
-          <button class="res-btn" data-audio="m4a">M4A</button>
+      <!-- Video/Audio Tabs + Panels (সাধারণ ভিডিও পোস্টের জন্য) -->
+      <div id="videoAudioSection">
+        <div class="tabs">
+          <button class="tab active" data-tab="video" id="tabVideo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            <span data-i18n="videoTab">ভিডিও</span>
+          </button>
+          <button class="tab" data-tab="audio" id="tabAudio">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <span data-i18n="audioTab">অডিও (MP3)</span>
+          </button>
         </div>
-        <button class="download-btn download-btn-audio" id="downloadAudioBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span data-i18n="downloadAudio">MP3 নামাও — সরাসরি</span>
-        </button>
+
+        <!-- Video Panel -->
+        <div class="tab-panel" id="panelVideo">
+          <div class="section-label" data-i18n="resLabel">Resolution বেছে নাও</div>
+          <div class="resolution-grid" id="resolutionGrid"></div>
+          <button class="download-btn" id="downloadVideoBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="downloadVideoLabel"></span>
+          </button>
+          <p class="no-tab-note" data-i18n="noNewTab">🔒 কোনো নতুন ট্যাব খুলবে না · সরাসরি আপনার ডিভাইসে</p>
+        </div>
+
+        <!-- Audio Panel -->
+        <div class="tab-panel hidden" id="panelAudio">
+          <div class="section-label" data-i18n="audioQualityLabel">Audio Quality বেছে নাও</div>
+          <div class="resolution-grid">
+            <button class="res-btn active" data-audio="320">MP3 320kbps</button>
+            <button class="res-btn" data-audio="128">MP3 128kbps</button>
+            <button class="res-btn" data-audio="m4a">M4A</button>
+          </div>
+          <button class="download-btn download-btn-audio" id="downloadAudioBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span data-i18n="downloadAudio">MP3 নামাও — সরাসরি</span>
+          </button>
+          <p class="no-tab-note" data-i18n="noNewTab">🔒 কোনো নতুন ট্যাব খুলবে না · সরাসরি আপনার ডিভাইসে</p>
+        </div>
+      </div>
+
+      <!-- Photo/Slideshow Panel (TikTok ছবি পোস্ট) -->
+      <div class="photo-section hidden" id="photoSection">
+        <div class="section-label" data-i18n="photoLabel">ছবিগুলো — একেকটা আলাদাভাবে নামাও</div>
+        <div class="photo-grid" id="photoGrid"></div>
         <p class="no-tab-note" data-i18n="noNewTab">🔒 কোনো নতুন ট্যাব খুলবে না · সরাসরি আপনার ডিভাইসে</p>
       </div>
     </div>

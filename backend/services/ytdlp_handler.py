@@ -28,29 +28,65 @@ def detect_platform(url: str) -> str:
     return "unknown"
 
 
-def get_video_info(url: str, rapidapi_key: str | None = None) -> dict:
+def get_video_info(url: str) -> dict:
     """
     Video info + CDN URLs বের করে।
     ফাইল download হয় না — শুধু JSON info।
 
-    TikTok-এর জন্য: yt-dlp প্রায়ই watermark-সহ বা signed/short-lived CDN URL
-    দেয় যা পরে Cloudflare Worker fetch করতে গেলে TikTok 403 দিয়ে ব্লক করে।
-    তাই RAPIDAPI_KEY থাকলে প্রথমে RapidAPI TikTok downloader (watermark-free,
-    বেশি reliable, আসল আলাদা audio track সহ) try করা হয়। সেটা fail করলে
-    yt-dlp দিয়ে fallback করে।
+    TikTok আলাদাভাবে হ্যান্ডল করা হয় (দেখুন _handle_tiktok) — Normal/SD
+    সবসময় ফ্রি yt-dlp দিয়ে সাথে সাথে, HD RapidAPI দিয়ে lazy (ক্লিক করলে
+    তখনই resolve হয়), আর ফটো/স্লাইডশো পোস্টের জন্য RapidAPI ছাড়া উপায় নেই।
     """
     platform = detect_platform(url)
 
-    if platform == "tiktok" and rapidapi_key:
-        try:
-            from .api_handler import get_hd_info
-            info = get_hd_info(url, rapidapi_key)
-            if info.get("formats"):
-                return info
-        except Exception:
-            pass  # RapidAPI fail করলে নিচে yt-dlp দিয়ে try করবে
+    if platform == "tiktok":
+        return _handle_tiktok(url)
 
     return _extract_with_ytdlp(url, platform)
+
+
+def _looks_like_tiktok_photo(url: str) -> bool:
+    """TikTok ফটো/স্লাইডশো পোস্টের URL-এ '/photo/' থাকে (ভিডিওতে '/video/')।
+    শুধু vm/vt.tiktok.com শর্ট লিংকে এটা বলা যায় না — সেগুলো ভিডিও হিসেবেই
+    try করা হয়, ব্যর্থ হলে ব্যবহারকারী পূর্ণ লিংক দিলে ধরা পড়বে।"""
+    return "/photo/" in (url or "").lower()
+
+
+def _handle_tiktok(url: str) -> dict:
+    from .api_handler import has_rapidapi_key, resolve_tiktok_photo
+
+    if _looks_like_tiktok_photo(url):
+        if not has_rapidapi_key():
+            raise ValueError(
+                "এই ফটো/স্লাইডশো পোস্টের জন্য HD সার্ভিস কনফিগার করা নেই "
+                "(RAPIDAPI_KEY লাগবে) — yt-dlp দিয়ে TikTok-এর ছবি পোস্ট বের করা যায় না।"
+            )
+        result = resolve_tiktok_photo(url)
+        if not result.get("success"):
+            raise ValueError(result.get("error") or "ছবিগুলো বের করা যায়নি।")
+        return {
+            "title":           result.get("title"),
+            "thumbnail":       result.get("thumbnail"),
+            "duration":        None,
+            "uploader":        "",
+            "platform":        "tiktok",
+            "is_photo":        True,
+            "images":          result.get("images", []),
+            "formats":         [],
+            "audio_url":       result.get("audio_url"),
+            "audio_available": result.get("audio_available", False),
+        }
+
+    # সাধারণ TikTok ভিডিও পোস্ট: Normal/SD সবসময় yt-dlp দিয়ে সাথে সাথেই
+    # ফেরত দেওয়া হয় (ফ্রি, কোনো API key লাগে না)। RAPIDAPI_KEY কনফিগার
+    # করা থাকলে "hd_available: true" পাঠানো হয় — কিন্তু RapidAPI কল এখানে
+    # হয় না, ব্যবহারকারী সত্যিই HD বাটনে ক্লিক করলে তখন /api/tiktok/hd
+    # দিয়ে resolve হবে (কোটা বাঁচাতে)।
+    info = _extract_with_ytdlp(url, "tiktok")
+    info["is_photo"] = False
+    info["images"] = []
+    info["hd_available"] = has_rapidapi_key()
+    return info
 
 
 def _extract_with_ytdlp(url: str, platform: str) -> dict:
