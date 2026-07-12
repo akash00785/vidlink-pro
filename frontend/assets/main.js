@@ -50,6 +50,7 @@ const LANGS = {
     hdLabel: "HD (No Watermark)",
     hdResolving: "HD খোঁজা হচ্ছে...",
     hdFailed: "HD লিংক বের করা যায়নি। একটু পর আবার চেষ্টা করো।",
+    tiktokDirectOpenHint: "ভিডিও নতুন ট্যাবে খুলেছে — এখন লং-প্রেস করে বা ব্রাউজারের মেনু থেকে \"Download video\" চেপে সেভ করো।",
     photoLabel: "ছবিগুলো — একেকটা আলাদাভাবে নামাও",
     photoDownload: "নামাও",
     photoDownloadAll: "সব ছবি নামাও",
@@ -90,6 +91,7 @@ const LANGS = {
     hdLabel: "HD (No Watermark)",
     hdResolving: "Resolving HD...",
     hdFailed: "Couldn't get the HD link. Please try again shortly.",
+    tiktokDirectOpenHint: "Video opened in a new tab — long-press it or use your browser's \"Download video\" option to save it.",
     photoLabel: "Photos — download each one separately",
     photoDownload: "Download",
     photoDownloadAll: "Download all photos",
@@ -484,10 +486,35 @@ document.querySelectorAll(".res-btn[data-audio]").forEach(btn => {
 });
 
 /**
- * triggerDownload: Cloudflare Worker দিয়ে সরাসরি download
- * নতুন ট্যাব খুলবে না, সরাসরি file নামবে।
+ * TikTok-এর CDN (Akamai) এখন datacenter/proxy IP (Cloudflare Worker,
+ * Render সার্ভার ইত্যাদি) থেকে আসা request 403 দিয়ে ব্লক করে দেয় — signed
+ * URL আসল ব্যবহারকারীর (residential/mobile) IP থেকে না আসলে reject হয়।
+ * তাই TikTok video/audio/photo CDN URL Worker দিয়ে proxy না করে সরাসরি
+ * ব্যবহারকারীর ব্রাউজার থেকেই নতুন ট্যাবে খোলা হয় — তখন TikTok সেটাকে
+ * সাধারণ ভিউয়িং ট্র্যাফিক হিসেবেই দেখে, ব্লক করে না।
+ */
+function isTikTokCdnUrl(url) {
+  try {
+    const h = new URL(url).hostname.toLowerCase();
+    return h.includes("tiktokcdn") || h.includes("tiktokv.com") ||
+           h.includes("muscdn.com") || h.includes(".tiktok.com");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * triggerDownload: বেশিরভাগ platform-এর জন্য Cloudflare Worker দিয়ে সরাসরি
+ * download (নতুন ট্যাব খুলবে না, সরাসরি file নামবে)। TikTok CDN-এর জন্য
+ * ব্যতিক্রম — সরাসরি নতুন ট্যাবে খোলা হয় (কারণ উপরে বলা IP-block সমস্যা)।
  */
 function triggerDownload(cdnUrl, filename) {
+  if (isTikTokCdnUrl(cdnUrl)) {
+    window.open(cdnUrl, "_blank", "noopener");
+    showToast(LANGS[currentLang].tiktokDirectOpenHint);
+    return;
+  }
+
   // Cloudflare Worker URL বানাও
   const workerUrl = `${CF_WORKER}?url=${encodeURIComponent(cdnUrl)}&filename=${encodeURIComponent(filename)}`;
   // Hidden anchor → click → download
@@ -498,6 +525,21 @@ function triggerDownload(cdnUrl, filename) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+function showToast(msg) {
+  if (!msg) return;
+  let toast = document.getElementById("vlpToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "vlpToast";
+    toast.className = "vlp-toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => toast.classList.remove("show"), 6000);
 }
 
 // ── Tabs ─────────────────────────────────────────

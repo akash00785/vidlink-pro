@@ -96,10 +96,13 @@ def _extract_with_ytdlp(url: str, platform: str) -> dict:
         "noplaylist": True,
         "skip_download": True,          # ← কোনো download নেই
         "extract_flat": False,
-        # YouTube bot-block bypass: Android client ব্যবহার করো
+        # YouTube bot-block bypass: android/tv client দিয়ে আগে try করো —
+        # এগুলো সাধারণত "Sign in to confirm you're not a bot" চাওয়ার
+        # আগেই সফল হয়। "web" শেষে রাখা হয়েছে শুধু fallback হিসেবে, কারণ
+        # web client ব্যর্থ হলেই এই cookie-চাওয়া error দেখায়।
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web"],
+                "player_client": ["android", "tv", "web"],
                 "skip": ["dash", "translated_subs"],
             }
         },

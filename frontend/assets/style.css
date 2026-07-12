@@ -441,6 +441,32 @@ body {
 /* Hidden utility */
 .hidden { display: none !important; }
 
+/* ── Toast (e.g. TikTok direct-open hint) ────── */
+.vlp-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  max-width: min(92vw, 420px);
+  background: var(--card, #1b1230);
+  color: var(--text, #fff);
+  border: 1px solid var(--border, rgba(255,255,255,0.15));
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 1000;
+}
+.vlp-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
 /* ── Mobile ───────────────────────────────────── */
 @media (max-width: 640px) {
   .navbar { padding: 14px 16px; }
