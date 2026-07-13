@@ -2,8 +2,33 @@
 yt-dlp handler — শুধু URL extract করে, video download করে না।
 """
 
+import os
 import yt_dlp
 import re
+
+# YouTube ইদানীং cloud/datacenter সার্ভারের IP (Render, AWS, Heroku ইত্যাদি)
+# থেকে আসা প্রায় সব রিকোয়েস্টই "Sign in to confirm you're not a bot" বলে
+# ব্লক করে দেয় — শুধু ভালো player_client বেছে নিলেই এখন আর যথেষ্ট না।
+# এর সবচেয়ে নির্ভরযোগ্য সমাধান হলো আসল একটা লগ-ইন করা YouTube অ্যাকাউন্টের
+# cookies ব্যবহার করা। Render dashboard-এ `YOUTUBE_COOKIES` env var-এ
+# Netscape-ফরম্যাটের পুরো cookies.txt-এর কনটেন্ট বসিয়ে দিলে এখানে সেটা
+# পড়ে অস্থায়ী ফাইলে লিখে yt-dlp-কে দেওয়া হয়। না থাকলে cookie ছাড়াই
+# চেষ্টা করা হয় (মাঝে মাঝে কাজ করবে, কিন্তু guarantee নেই)।
+_COOKIE_FILE = "/tmp/vidlink_youtube_cookies.txt"
+
+
+def _youtube_cookiefile() -> str | None:
+    raw = os.environ.get("YOUTUBE_COOKIES", "").strip()
+    if not raw:
+        return None
+    try:
+        # ইতিমধ্যে লেখা থাকলে (আগের রিকোয়েস্টে) আবার লেখার দরকার নেই,
+        # কিন্তু content বদলে গেলে (redeploy) নতুন করে লিখে দেওয়া নিরাপদ।
+        with open(_COOKIE_FILE, "w", encoding="utf-8") as f:
+            f.write(raw)
+        return _COOKIE_FILE
+    except OSError:
+        return None
 
 
 # Quality label → badge mapping
@@ -110,6 +135,11 @@ def _extract_with_ytdlp(url: str, platform: str) -> dict:
             "User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
         },
     }
+
+    if platform == "youtube":
+        cookiefile = _youtube_cookiefile()
+        if cookiefile:
+            ydl_opts["cookiefile"] = cookiefile
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:

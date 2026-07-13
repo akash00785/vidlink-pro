@@ -129,6 +129,28 @@ Render dashboard → Settings → Custom Domain-এ নিজের কেনা
 | Key | Value | Required |
 |-----|-------|----------|
 | `RAPIDAPI_KEY` | RapidAPI key — comma-separated for multiple keys (`keyA,keyB`) | Optional (HD + TikTok photo posts only) |
+| `YOUTUBE_COOKIES` | তোমার লগ-ইন করা YouTube অ্যাকাউন্টের `cookies.txt` (Netscape format) ফাইলের পুরো কনটেন্ট | Optional, কিন্তু ছাড়া YouTube প্রায়ই "Sign in to confirm you're not a bot" এরর দেবে (নিচে দেখো) |
+
+### কেন YouTube মাঝে মাঝে/প্রায়ই কাজ করে না
+
+Render/AWS/Heroku-এর মতো cloud সার্ভারের IP থেকে আসা রিকোয়েস্ট YouTube
+এখন খুব কঠোরভাবে bot হিসেবে detect করে ফেলে — এটা yt-dlp আপডেট করলেও,
+বা player client পাল্টালেও অনেক সময় পুরোপুরি ঠিক হয় না, কারণ এটা
+YouTube-এর IP-reputation-ভিত্তিক ব্লক, কোনো কোড বাগ না। সবচেয়ে
+নির্ভরযোগ্য সমাধান হলো তোমার নিজের (আসল, লগ-ইন করা) YouTube অ্যাকাউন্টের
+cookies ব্যবহার করা:
+
+1. Browser-এ একটা cookies export extension ইনস্টল করো (যেমন "Get
+   cookies.txt LOCALLY" — Chrome/Firefox উভয়েই পাওয়া যায়)।
+2. youtube.com-এ লগ-ইন করা অবস্থায় extension দিয়ে cookies export করে
+   `cookies.txt` ফাইল ডাউনলোড করো।
+3. সেই ফাইলের **পুরো কনটেন্ট** কপি করে Render dashboard → Environment →
+   `YOUTUBE_COOKIES` নামে একটা নতুন env var বানিয়ে paste করো।
+4. Redeploy করো।
+
+⚠️ এই cookies তোমার YouTube অ্যাকাউন্টের অ্যাক্সেস দেয় — বিশ্বাসযোগ্য
+জায়গা ছাড়া কারো সাথে শেয়ার কোরো না। মাঝে মাঝে (কয়েক সপ্তাহ/মাস পর)
+cookies expire হয়ে গেলে আবার নতুন করে export করে বসাতে হতে পারে।
 
 ---
 
